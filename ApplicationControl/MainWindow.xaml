@@ -1,0 +1,83 @@
+﻿<Window x:Class="ApplicationControl.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Application Control"
+        Width="1000"
+        Height="600"
+        WindowStartupLocation="CenterScreen"
+        Loaded="Window_Loaded"
+        Background="White"
+        >
+
+    <!-- Resources -->
+    <Window.Resources>
+        <!-- Primary Color Brushes -->
+        <SolidColorBrush x:Key="PrimaryBrush" Color="#4B49AC"/>
+        <SolidColorBrush x:Key="AccentBrush" Color="#98BDFF"/>
+        <SolidColorBrush x:Key="SidebarBackground" Color="#23294E"/>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition x:Name="SidebarColumn" Width="60"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Sidebar -->
+        <StackPanel Background="{StaticResource SidebarBackground}"
+                    VerticalAlignment="Stretch"
+                    Width="{Binding ElementName=SidebarColumn, Path=Width.Value}">
+
+            <!-- Toggle Button -->
+            <Button Click="ToggleSidebar_Click"
+                    Background="Transparent"
+                    Foreground="White"
+                    FontSize="20"
+                    Padding="15"
+                    BorderThickness="0"
+                    HorizontalAlignment="Center"
+                    ToolTip="Toggle" >
+                <TextBlock Text="☰" />
+            </Button>
+
+            <!-- Home Button -->
+            <Button Click="Home_Click"
+                    Background="Transparent"
+                    Foreground="White"
+                    FontSize="20"
+                    Padding="15"
+                    BorderThickness="0"
+                    HorizontalAlignment="Center"
+                    ToolTip="Home" >
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="🏠" />
+                    <TextBlock Text=" Home" 
+               Visibility="{Binding ElementName=MainWindow, Path=TextVisibility}"/>
+                </StackPanel>
+            </Button>
+          
+
+            <!-- Manage Apps Button -->
+
+            <Button Click="ManageApps_Click"
+                    Background="Transparent"
+                    Foreground="White"
+                    FontSize="20"
+                    Padding="15 "
+                    BorderThickness="0"
+                    HorizontalAlignment="Center"
+                    ToolTip="Manage Apps" >
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="🛠" />
+                    <TextBlock Text=" Manage Apps"
+               Visibility="{Binding ElementName=MainWindow, Path=TextVisibility}"/>
+                </StackPanel>
+            </Button>
+        </StackPanel>
+
+        <!-- Main content -->
+        <Frame x:Name="MainFrame"
+               Grid.Column="1"
+               NavigationUIVisibility="Hidden"/>
+    </Grid>
+</Window>
