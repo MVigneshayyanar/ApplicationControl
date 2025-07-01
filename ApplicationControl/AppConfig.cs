@@ -4,11 +4,10 @@ using Newtonsoft.Json;
 
 namespace ApplicationControl
 {
-
     public class AppConfig
     {
-        public List<string> Whitelist { get; set; } = new List<string>();
-        public List<string> Blacklist { get; set; } = new List<string>();
+        public List<AppInfo> Whitelist { get; set; } = new();
+        public List<AppInfo> Blacklist { get; set; } = new();
 
         private static readonly string configPath = "config.json";
 
@@ -16,7 +15,7 @@ namespace ApplicationControl
         {
             if (File.Exists(configPath))
             {
-                string json = File.ReadAllText(configPath);
+                var json = File.ReadAllText(configPath);
                 return JsonConvert.DeserializeObject<AppConfig>(json) ?? new AppConfig();
             }
             return new AppConfig();
@@ -24,8 +23,9 @@ namespace ApplicationControl
 
         public static void Save(AppConfig config)
         {
-            string json = JsonConvert.SerializeObject(config, Formatting.Indented);
+            var json = JsonConvert.SerializeObject(config, Formatting.Indented);
             File.WriteAllText(configPath, json);
         }
     }
+
 }

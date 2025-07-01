@@ -1,36 +1,64 @@
 ﻿<UserControl x:Class="ApplicationControl.ManageApps"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             Background="White">
-
-    <Grid Margin="20">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid Background="White" Margin="10">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-        <!-- Whitelist Section -->
-        <Border Grid.Column="0" Background="#F5F5F5" CornerRadius="10" Padding="15" Margin="10">
-            <StackPanel>
-                <TextBlock Text="Whitelist" FontSize="20" FontWeight="Bold" Foreground="#23294E" Margin="0,0,0,10"/>
-                <TextBox x:Name="WhitelistInput" Margin="0,5" Height="30" FontSize="14"/>
-                <Button Content="Add" Click="AddWhitelist" Margin="0,5" Height="30" Background="#23294E" Foreground="White"/>
-                <ListBox x:Name="WhitelistBox" Height="300" Margin="0,5" FontSize="14" 
-                         ScrollViewer.VerticalScrollBarVisibility="Auto"/>
-                <Button Content="Remove Selected" Click="RemoveWhitelist" Margin="0,5" Height="30" Background="#E74C3C" Foreground="White"/>
-            </StackPanel>
-        </Border>
+        <!-- Whitelist -->
+        <StackPanel Grid.Column="0" Margin="10">
+            <TextBlock Text="Whitelist" FontSize="20" FontWeight="Bold" Foreground="#4B49AC" Margin="0,0,0,10"/>
 
-        <!-- Blacklist Section -->
-        <Border Grid.Column="1" Background="#F5F5F5" CornerRadius="10" Padding="15" Margin="10">
-            <StackPanel>
-                <TextBlock Text="Blacklist" FontSize="20" FontWeight="Bold" Foreground="#23294E" Margin="0,0,0,10"/>
-                <TextBox x:Name="BlacklistInput" Margin="0,5" Height="30" FontSize="14"/>
-                <Button Content="Add" Click="AddBlacklist" Margin="0,5" Height="30" Background="#23294E" Foreground="White"/>
-                <ListBox x:Name="BlacklistBox" Height="300" Margin="0,5" FontSize="14"
-                         ScrollViewer.VerticalScrollBarVisibility="Auto"/>
-                <Button Content="Remove Selected" Click="RemoveBlacklist" Margin="0,5" Height="30" Background="#E74C3C" Foreground="White"/>
-            </StackPanel>
-        </Border>
+            <Button Content="➕ Add App to Whitelist"
+                    Click="AddWhitelist"
+                    Margin="0,5"
+                    Background="#4B49AC"
+                    Foreground="White"
+                    Height="35"/>
+
+            <ListBox x:Name="WhitelistBox"
+                     ItemsSource="{Binding Whitelist}"
+                     Height="300"
+                     Margin="0,10,0,10"
+                     BorderBrush="#4B49AC"
+                     BorderThickness="1"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto"/>
+
+            <Button Content="🗑 Remove Selected"
+                    Click="RemoveWhitelist"
+                    Margin="0,5"
+                    Height="35"
+                    Background="#E74C3C"
+                    Foreground="White"/>
+        </StackPanel>
+
+        <!-- Blacklist -->
+        <StackPanel Grid.Column="1" Margin="10">
+            <TextBlock Text="Blacklist" FontSize="20" FontWeight="Bold" Foreground="#E74C3C" Margin="0,0,0,10"/>
+
+            <Button Content="➕ Add App to Blacklist"
+                    Click="AddBlacklist"
+                    Margin="0,5"
+                    Background="#E74C3C"
+                    Foreground="White"
+                    Height="35"/>
+
+            <ListBox x:Name="BlacklistBox"
+                     ItemsSource="{Binding Blacklist}"
+                     Height="300"
+                     Margin="0,10,0,10"
+                     BorderBrush="#E74C3C"
+                     BorderThickness="1"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto"/>
+
+            <Button Content="🗑 Remove Selected"
+                    Click="RemoveBlacklist"
+                    Margin="0,5"
+                    Height="35"
+                    Background="#E74C3C"
+                    Foreground="White"/>
+        </StackPanel>
     </Grid>
 </UserControl>
