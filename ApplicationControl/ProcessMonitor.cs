@@ -1,10 +1,12 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 
 namespace ApplicationControl
@@ -12,15 +14,20 @@ namespace ApplicationControl
     public class ProcessMonitor
     {
         private readonly AppConfig config;
-        private readonly Thread monitorThread;
         private bool isRunning;
+        private readonly Thread monitorThread;
+
+        // Cache to reduce repeated hash computations
+        private readonly ConcurrentDictionary<string, string> hashCache = new();
+        private readonly HashSet<int> seenProcessIds = new();
 
         public ProcessMonitor(AppConfig config)
         {
             this.config = config;
             monitorThread = new Thread(MonitorProcesses)
             {
-                IsBackground = true
+                IsBackground = true,
+                Priority = ThreadPriority.Highest
             };
         }
 
@@ -37,106 +44,88 @@ namespace ApplicationControl
 
         private void MonitorProcesses()
         {
-            var seenPids = new HashSet<int>();
-
             while (isRunning)
             {
                 try
                 {
                     var processes = Process.GetProcesses();
 
-                    foreach (var process in processes)
+                    Parallel.ForEach(processes, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, process =>
                     {
-                        if (seenPids.Contains(process.Id)) continue;
-
-                        string exeName = process.ProcessName.ToLowerInvariant() + ".exe";
-
-                        // 🔹 FAST BLOCK: check against blacklist exe names
-                        if (config.Blacklist.Any(app =>
-                            !string.IsNullOrEmpty(app.ExeName) && app.ExeName.Equals(exeName, StringComparison.OrdinalIgnoreCase)))
-                        {
-                            try
-                            {
-                                process.Kill();
-                                seenPids.Add(process.Id);
-
-                                // Show notification popup asynchronously (optional)
-                                Application.Current.Dispatcher.BeginInvoke(() =>
-                                {
-                                    new BlockPopup(exeName).Show(); // non-blocking
-                                });
-                            }
-                            catch { /* Ignore access denied/system processes */ }
-
-                            continue;
-                        }
-
-                        // 🔹 Skip if whitelisted by exe name
-                        if (config.Whitelist.Any(app =>
-                            !string.IsNullOrEmpty(app.ExeName) && app.ExeName.Equals(exeName, StringComparison.OrdinalIgnoreCase)))
-                            continue;
-
-                        // 🔹 Fallback: check product/vendor/hash
                         try
                         {
+                            if (!isRunning || seenProcessIds.Contains(process.Id))
+                                return;
+
+                            string exeName = process.ProcessName.ToLowerInvariant() + ".exe";
                             string path = process.MainModule?.FileName;
-                            if (string.IsNullOrEmpty(path) || !File.Exists(path)) continue;
+
+                            if (string.IsNullOrEmpty(path) || !File.Exists(path))
+                                return;
 
                             var info = FileVersionInfo.GetVersionInfo(path);
                             string product = info.ProductName ?? "";
                             string vendor = info.CompanyName ?? "";
-                            string hash = ComputeFileHash(path);
 
-                            bool isWhitelisted = config.Whitelist.Any(app =>
-                                (!string.IsNullOrEmpty(app.ProductName) && app.ProductName == product) ||
-                                (!string.IsNullOrEmpty(app.VendorName) && app.VendorName == vendor) ||
-                                (!string.IsNullOrEmpty(app.FileHash) && app.FileHash == hash));
+                            // Fastest: check ExeName
+                            bool match = config.Blacklist.Any(app =>
+                                (!string.IsNullOrWhiteSpace(app.ExeName) && app.ExeName.Equals(exeName, StringComparison.OrdinalIgnoreCase)) ||
+                                (!string.IsNullOrWhiteSpace(app.ProductName) && app.ProductName.Equals(product, StringComparison.OrdinalIgnoreCase)) ||
+                                (!string.IsNullOrWhiteSpace(app.VendorName) && app.VendorName.Equals(vendor, StringComparison.OrdinalIgnoreCase)) ||
+                                (!string.IsNullOrWhiteSpace(app.FileHash) && GetCachedHash(path) == app.FileHash.ToLowerInvariant()));
 
-                            if (isWhitelisted) continue;
+                            if (!match) return;
 
-                            bool isBlacklisted = config.Blacklist.Any(app =>
-                                (!string.IsNullOrEmpty(app.ProductName) && app.ProductName == product) ||
-                                (!string.IsNullOrEmpty(app.VendorName) && app.VendorName == vendor) ||
-                                (!string.IsNullOrEmpty(app.FileHash) && app.FileHash == hash));
+                            // If not in whitelist
+                            bool whitelisted = config.Whitelist.Any(app =>
+                                (!string.IsNullOrWhiteSpace(app.ExeName) && app.ExeName.Equals(exeName, StringComparison.OrdinalIgnoreCase)) ||
+                                (!string.IsNullOrWhiteSpace(app.ProductName) && app.ProductName.Equals(product, StringComparison.OrdinalIgnoreCase)) ||
+                                (!string.IsNullOrWhiteSpace(app.VendorName) && app.VendorName.Equals(vendor, StringComparison.OrdinalIgnoreCase)) ||
+                                (!string.IsNullOrWhiteSpace(app.FileHash) && GetCachedHash(path) == app.FileHash.ToLowerInvariant()));
 
-                            if (isBlacklisted)
+                            if (whitelisted)
+                                return;
+
+                            // Kill immediately
+                            process.Kill();
+                            seenProcessIds.Add(process.Id);
+
+                            // Optional: Show popup asynchronously
+                            Application.Current.Dispatcher.BeginInvoke(() =>
                             {
-                                process.Kill();
-                                seenPids.Add(process.Id);
-
-                                Application.Current.Dispatcher.BeginInvoke(() =>
-                                {
-                                    new BlockPopup($"{product} ({exeName})").Show(); // non-blocking
-                                });
-                            }
+                                new BlockPopup($"{product}").Show();
+                            });
                         }
-                        catch { /* Access denied or system process — ignore */ }
-                    }
+                        catch
+                        {
+                            // Ignore access denied or disposed processes
+                        }
+                    });
                 }
-                catch { /* general try-catch for monitor loop */ }
+                catch
+                {
+                    // Ignore global monitor exceptions
+                }
 
-                Thread.Sleep(100); // ✅ Lower to 100ms or even 50ms
+                Thread.Sleep(50); // fast cycle
             }
         }
 
-
-
-
-
-
-        private string ComputeFileHash(string path)
+        private string GetCachedHash(string path)
         {
-            try
+            return hashCache.GetOrAdd(path, p =>
             {
-                using var sha256 = SHA256.Create();
-                using var stream = File.OpenRead(path);
-                var hashBytes = sha256.ComputeHash(stream);
-                return BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
-            }
-            catch
-            {
-                return string.Empty;
-            }
+                try
+                {
+                    using var sha256 = SHA256.Create();
+                    using var stream = File.OpenRead(p);
+                    return BitConverter.ToString(sha256.ComputeHash(stream)).Replace("-", "").ToLowerInvariant();
+                }
+                catch
+                {
+                    return string.Empty;
+                }
+            });
         }
     }
 }

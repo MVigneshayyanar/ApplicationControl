@@ -7,7 +7,7 @@ namespace ApplicationControl
         public BlockPopup(string appName)
         {
             InitializeComponent();
-            MessageText.Text = $"The application \"{appName}\" has been blocked.";
+            MessageText.Text = $"The application \"{appName}\" has been prohibited.";
         }
         private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
